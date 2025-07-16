@@ -7,7 +7,7 @@ detect_java_version() {
     local VERSION="$2"   # ← 이름 변경
 
     echo "[+] 언어 및 Java 버전 탐지 시작"
-    cd "/tmp/${REPO_NAME}" || exit 1
+    cd "/tmp/${REPO_NAME}_${BUILD_ID}" || exit 1
 
     IMAGE_TAG="cli"
     JAVA_VERSION=""
