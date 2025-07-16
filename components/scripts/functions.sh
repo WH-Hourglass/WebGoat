@@ -1,12 +1,10 @@
-// 인자값 바꾼거 
-
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 detect_java_version() {
     local REPO_NAME="$1"
-    local BUILD_ID="$2"
+    local VERSION="$2"   # ← 이름 변경
 
     echo "[+] 언어 및 Java 버전 탐지 시작"
     cd "/tmp/${REPO_NAME}" || exit 1
@@ -47,30 +45,30 @@ detect_java_version() {
     fi
 
     echo "[ℹ️] 최종 선택된 Docker 이미지 태그: $IMAGE_TAG"
-    echo "$IMAGE_TAG" > "/tmp/cdxgen_image_tag_${REPO_NAME}_${BUILD_ID}.txt"
-    echo "$JAVA_VERSION" > "/tmp/cdxgen_java_version_${REPO_NAME}_${BUILD_ID}.txt"
+    echo "$IMAGE_TAG" > "/tmp/cdxgen_image_tag_${REPO_NAME}_${VERSION}.txt"
+    echo "$JAVA_VERSION" > "/tmp/cdxgen_java_version_${REPO_NAME}_${VERSION}.txt"
 }
 
 upload_sbom() {
     local REPO_NAME="$1"
-    local BUILD_ID="$2"
-    local COMMIT_ID="$3"  # 추가: 커밋 ID를 받도록 수정
+    local VERSION="$2"      # ← 이름 변경
+    local REPO_DIR="$3"
+    local COMMIT_ID="$4"
 
-    if [[ -z "$REPO_NAME" || -z "$BUILD_ID" || -z "$REPO_DIR" || -z "$COMMIT_ID" ]]; then
-        echo "❌ upload_sbom 함수 호출 시 REPO_NAME, BUILD_ID, REPO_DIR, COMMIT_ID가 필요합니다."
+    if [[ -z "$REPO_NAME" || -z "$VERSION" || -z "$REPO_DIR" || -z "$COMMIT_ID" ]]; then
+        echo "❌ upload_sbom 함수 호출 시 REPO_NAME, VERSION, REPO_DIR, COMMIT_ID가 필요합니다."
         return 1
     fi
 
     source /home/ec2-user/.env
 
-    local SBOM_FILE="${REPO_DIR}/sbom_${REPO_NAME}_${BUILD_ID}.json"
+    local SBOM_FILE="${REPO_DIR}/sbom_${REPO_NAME}_${VERSION}.json"
     if [[ ! -f "$SBOM_FILE" ]]; then
         echo "❌ SBOM 파일이 존재하지 않습니다: $SBOM_FILE"
         return 1
     fi
 
-    # PROJECT_VERSION을 buildId와 commitId로 설정
-    local PROJECT_VERSION="${BUILD_ID}_${COMMIT_ID}"
+    local PROJECT_VERSION="$VERSION"
     echo "🚀 SBOM 업로드 시작: $SBOM_FILE (projectVersion: $PROJECT_VERSION)"
 
     curl -X POST http://localhost:8080/api/v1/bom \
