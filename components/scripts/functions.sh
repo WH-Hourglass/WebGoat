@@ -1,6 +1,7 @@
 //수정중  8, project uuid 넘기는 부분 추가 -> 했다가 다시 제거 
 // 테스트용, check_cvss_and_notify_1.py 호출 ver
 // [DEBUG] 메시지는 향후 모두 삭제 예정 
+// upload_sbom1.sh 내용 반영 
 
 #!/bin/bash
 
@@ -78,22 +79,9 @@ check_cvss() {
         return 1
     fi
     
-    log_message "[🔍] Python 스크립트 실행 중..."
-    python3 /home/ec2-user/check_cvss_and_notify.py "$PROJECT_UUID" "$DT_API_KEY" "$DT_URL" "$REPO_NAME" 2>&1
-    local python_exit_code=$?
-    
-    log_message "[ℹ️] Python 스크립트 종료 코드: $python_exit_code"
-    
-    if [[ $python_exit_code -eq 2 ]]; then
-        log_message "❌ CVSS 9 이상 취약점 발견. SBOM 업로드를 중단합니다."
-        return 1
-    elif [[ $python_exit_code -eq 0 ]]; then
-        log_message "✅ CVSS 점검 통과"
-        return 0
-    else
-        log_message "⚠️ CVSS 점검 중 예상치 못한 오류 발생 (exit code: $python_exit_code)"
-        return 1
-    fi
+    # python3 호출은 upload_sbom에서 이미 처리되므로 이 부분은 제거
+    log_message "[✅] CVSS 점검을 위한 준비가 완료되었습니다."
+    return 0
 }
 
 # SBOM 업로드 함수
@@ -144,7 +132,7 @@ upload_sbom() {
     
     # 프로젝트 UUID 조회를 파이썬 스크립트에서 처리하므로 호출
     log_message "[DEBUG] check_cvss 함수 호출 시작"
-    python3 /home/ec2-user/check_cvss_and_notify.py "$REPO_NAME" "$PROJECT_VERSION" "$DT_API_KEY" "http://localhost:8080" || {
+    python3 /home/ec2-user/check_cvss_and_notify_1.py "$REPO_NAME" "$PROJECT_VERSION" "$DT_API_KEY" "http://localhost:8080" || {
         log_message "❌ CVSS 점검 실패"
         return 1
     }
