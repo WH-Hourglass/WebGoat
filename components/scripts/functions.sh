@@ -136,7 +136,7 @@ upload_sbom() {
     
     # 프로젝트 UUID 조회를 파이썬 스크립트에서 처리하므로 호출
     log_message "[DEBUG] check_cvss 함수 호출 시작"
-    python3 /home/ec2-user/check_cvss_and_notify_1.py "$REPO_NAME" "$PROJECT_VERSION" "$DT_API_KEY" "http://localhost:8080" || {
+    python3 /home/ec2-user/check_cvss_and_notify_2.py "$REPO_NAME" "$PROJECT_VERSION" "$DT_API_KEY" "http://localhost:8080" || {
         log_message "❌ CVSS 점검 실패"
         return 1
     }
