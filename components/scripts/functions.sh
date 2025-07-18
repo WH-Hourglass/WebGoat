@@ -1,5 +1,5 @@
 //수정중  6, project uuid 넘기는 부분 추가 
-// 너무 길다.. 여기 좀 정리 해야될 것 같음
+// 이거 쓰면 안됨 
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
