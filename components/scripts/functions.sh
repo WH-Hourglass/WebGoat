@@ -142,18 +142,10 @@ upload_sbom() {
     log_message "[⏳] Dependency-Track 분석 완료까지 대기 중..."
     sleep 30
     
-    # PROJECT_UUID는 이제 check_cvss_and_notify.py에서 처리하므로 넘길 필요 없음
-    log_message "[DEBUG] check_cvss 함수 존재 확인"
-    if type check_cvss &>/dev/null; then
-        log_message "[DEBUG] check_cvss 함수 발견됨"
-    else
-        log_message "[ERROR] check_cvss 함수가 정의되지 않음"
-        return 1
-    fi
-    
-    log_message "[DEBUG] check_cvss 호출 시작"
-    check_cvss "$DT_API_KEY" "$DT_URL" "$REPO_NAME" || {
-        log_message "❌ [Debug] CVSS 점검 실패"
+    # 프로젝트 UUID 조회를 파이썬 스크립트에서 처리하므로 호출
+    log_message "[DEBUG] check_cvss 함수 호출 시작"
+    python3 /home/ec2-user/check_cvss_and_notify.py "$REPO_NAME" "$PROJECT_VERSION" "$DT_API_KEY" "http://localhost:8080" || {
+        log_message "❌ CVSS 점검 실패"
         return 1
     }
     
