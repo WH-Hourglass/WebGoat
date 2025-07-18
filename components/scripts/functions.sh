@@ -119,15 +119,29 @@ upload_sbom() {
         return 1
     fi
 
-    echo "✅ SBOM 업로드 완료"
+echo "[DEBUG] 업로드 완료, 다음 단계 시작"
     
     # 2. 업로드 완료 후 CVSS 점검
     echo "[⏳] 잠시 대기하세요 ... (CVSS 점검중)"
-    sleep 10  # Dependency-Track이 분석할 시간을 줌
     
+    echo "[DEBUG] sleep 시작"
+    sleep 10
+    echo "[DEBUG] sleep 완료"
+    
+    echo "[DEBUG] check_cvss 함수 존재 확인"
+    if type check_cvss &>/dev/null; then
+        echo "[DEBUG] check_cvss 함수 발견됨"
+    else
+        echo "[ERROR] check_cvss 함수가 정의되지 않음"
+        return 1
+    fi
+    
+    echo "[DEBUG] check_cvss 호출 시작"
     check_cvss "$PROJECT_UUID" "$DT_API_KEY" "$DT_URL" "$REPO_NAME" || {
-        echo "❌ [Debug] CVSS 점검 실패"
+        echo "❌ [Debug] CVSS 점검 실패 - 하지만 SBOM 업로드는 완료됨"
         return 1
     }
+    
+    echo "[DEBUG] check_cvss 완료"
+    echo "✅ SBOM 업로드 완료"
 }
-
