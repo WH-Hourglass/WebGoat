@@ -141,3 +141,4 @@ upload_sbom() {
     log_message "✅ SBOM 업로드 및 CVSS 점검 완료"
 }
 
+
