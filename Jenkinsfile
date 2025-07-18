@@ -47,7 +47,8 @@ pipeline {
         stage('🚀 Generate SBOM for each commit') {
             steps {
                 script {
-                    load 'components/scripts/generate_sbom.groovy'
+                    load 'components/scripts/generate_sbom_1.groovy'
+                    //원래는 components/scripts/generate_sbom.groovy
                 }
             }
         }
