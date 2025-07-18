@@ -1,4 +1,5 @@
 //수정중  8, project uuid 넘기는 부분 추가 -> 했다가 다시 제거 
+// 테스트용, check_cvss_and_notify_1.py 호출 ver
 
 #!/bin/bash
 
@@ -77,7 +78,7 @@ check_cvss() {
     fi
     
     log_message "[🔍] Python 스크립트 실행 중..."
-    python3 /home/ec2-user/check_cvss_and_notify.py "$PROJECT_UUID" "$DT_API_KEY" "$DT_URL" "$REPO_NAME" 2>&1
+    python3 /home/ec2-user/check_cvss_and_notify_1.py "$PROJECT_UUID" "$DT_API_KEY" "$DT_URL" "$REPO_NAME" 2>&1
     local python_exit_code=$?
     
     log_message "[ℹ️] Python 스크립트 종료 코드: $python_exit_code"
