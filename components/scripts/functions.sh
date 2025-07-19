@@ -69,6 +69,7 @@ detect_java_version() {
     echo "$JAVA_VERSION" > "/tmp/cdxgen_java_version_${REPO_NAME}_${VERSION}.txt"
 }
 
+/*
 # CVSS 점검 함수
 check_cvss() {
     local PROJECT_UUID="$1"
@@ -86,7 +87,7 @@ check_cvss() {
     # python3 호출은 upload_sbom에서 이미 처리되므로 이 부분은 제거
     log_message "[✅] CVSS 점검을 위한 준비가 완료되었습니다."
     return 0
-}
+} */
 
 # SBOM 업로드 함수
 upload_sbom() {
