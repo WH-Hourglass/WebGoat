@@ -69,25 +69,25 @@ detect_java_version() {
     echo "$JAVA_VERSION" > "/tmp/cdxgen_java_version_${REPO_NAME}_${VERSION}.txt"
 }
 
-/*
-# CVSS 점검 함수
-check_cvss() {
-    local PROJECT_UUID="$1"
-    local DT_API_KEY="$2"
-    local DT_URL="$3"
-    local REPO_NAME="$4"
 
-    log_message "[+] CVSS 점검 시작 - PROJECT_UUID: $PROJECT_UUID, REPO_NAME: $REPO_NAME"
+# CVSS 점검 함수
+#check_cvss() {
+ #   local PROJECT_UUID="$1"
+  #  local DT_API_KEY="$2"
+   # local DT_URL="$3"
+    #local REPO_NAME="$4"
+
+    #log_message "[+] CVSS 점검 시작 - PROJECT_UUID: $PROJECT_UUID, REPO_NAME: $REPO_NAME"
     
-    if [[ -z "$PROJECT_UUID" || -z "$DT_API_KEY" || -z "$DT_URL" || -z "$REPO_NAME" ]]; then
-        log_message "[⚠️] CVSS 점검을 위한 필수 매개변수가 누락됨"
-        return 1
-    fi
+    #if [[ -z "$PROJECT_UUID" || -z "$DT_API_KEY" || -z "$DT_URL" || -z "$REPO_NAME" ]]; then
+     #   log_message "[⚠️] CVSS 점검을 위한 필수 매개변수가 누락됨"
+      #  return 1
+    #fi
     
     # python3 호출은 upload_sbom에서 이미 처리되므로 이 부분은 제거
-    log_message "[✅] CVSS 점검을 위한 준비가 완료되었습니다."
-    return 0
-} */
+    #log_message "[✅] CVSS 점검을 위한 준비가 완료되었습니다."
+    #return 0
+#} 
 
 # SBOM 업로드 함수
 upload_sbom() {
