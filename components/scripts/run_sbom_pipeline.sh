@@ -106,10 +106,10 @@ echo "[✅] SBOM 파이프라인 완료: $REPO_NAME"
 
 # CVSS 점검 실행
 echo "[DEBUG] run_cvss_check 함수 호출"
-check_cvss "$REPO_NAME" "$VERSION"
- || {
+if ! check_cvss "$REPO_NAME" "$VERSION"; then
     echo "❌ CVSS 점검 실패"
-}
+fi
+
 
 
 # 정리: 임시 파일 삭제
