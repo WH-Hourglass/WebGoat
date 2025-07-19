@@ -103,7 +103,11 @@ echo "[+] SBOM 업로드 시작 (락 사용)"
 
 echo "[✅] SBOM 파이프라인 완료: $REPO_NAME"
 
-
+# run_sbom_pipeline.sh 마지막 부분
+echo "[DEBUG] run_cvss_check 함수 호출"
+if ! check_cvss "$REPO_NAME" "$VERSION"; then
+    echo "❌ CVSS 점검 실패"
+fi
 
 
 # 정리: 임시 파일 삭제
