@@ -136,30 +136,24 @@ upload_sbom() {
     sleep 30
 }
 
-# CVSS 점검 함수
 check_cvss() {
     local REPO_NAME="$1"
-    local VERSION="$2"
+    local PROJECT_VERSION="$2"
 
-    if [[ -z "$REPO_NAME" || -z "$VERSION" ]]; then
-        log_message "❌ check_cvss 호출 시 REPO_NAME과 VERSION이 필요합니다."
-        return 1
-    fi
-
+    # 환경변수 로드 (Jenkins에서는 꼭 필요)
     source /home/ec2-user/.env
-    local SCRIPT_DIR="/home/ec2-user"
-    local API_KEY="$DT_API_KEY"
-    local DT_URL="$DT_URL"
 
-    log_message "[🔍] check_cvss_and_notify.py 실행 시작"
-    local CMD="python3 $SCRIPT_DIR/check_cvss_and_notify_2.py '$REPO_NAME' '$VERSION' '$API_KEY' '$DT_URL'"
-    log_message "[CMD] $CMD"
+    # DEBUG 로그
+    log_message "[+] check_cvss_and_notify 호출: $REPO_NAME $PROJECT_VERSION"
+    log_message "[DEBUG] 실행 명령: python3 /home/ec2-user/check_cvss_and_notify_2.py \"$REPO_NAME\" \"$PROJECT_VERSION\" \"$DT_API_KEY\" \"$DT_URL\""
 
-    python3 "$SCRIPT_DIR/check_cvss_and_notify_2.py" "$REPO_NAME" "$VERSION" "$API_KEY" "$DT_URL"
-    local CVSS_EXIT=$?
-    log_message "[ℹ️] CVSS 점검 종료 코드: $CVSS_EXIT"
-    return $CVSS_EXIT
+    # Python 실행
+    python3 /home/ec2-user/check_cvss_and_notify_2.py "$REPO_NAME" "$PROJECT_VERSION" "$DT_API_KEY" "$DT_URL"
+    local exit_code=$?
+
+    ...
 }
+
 
 
 
