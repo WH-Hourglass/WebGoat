@@ -19,6 +19,9 @@ if [[ -z "$BUILD_ID" ]]; then
     BUILD_ID="$(date +%s%N)"
 fi
 
+
+source /home/ec2-user/.env
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/functions.sh"
 
@@ -102,12 +105,6 @@ echo "[+] SBOM 업로드 시작 (락 사용)"
 ) 201>"${LOCK_FILE}.upload"
 
 echo "[✅] SBOM 파이프라인 완료: $REPO_NAME"
-
-
-echo "[DEBUG] SLACK_WEBHOOK_URL (in run_sbom_pipeline.sh): $SLACK_WEBHOOK_URL"
-
-echo "[DEBUG] 수동 실행 테스트 (내부에서)"
-python3 /home/ec2-user/check_cvss_and_notify_2.py "$REPO_NAME" "$VERSION" "$DT_API_KEY" "http://localhost:8080"
 
 
 # CVSS 점검 실행
