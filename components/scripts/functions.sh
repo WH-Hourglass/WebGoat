@@ -140,27 +140,71 @@ check_cvss() {
     local REPO_NAME="$1"
     local PROJECT_VERSION="$2"
 
-    # 환경변수 로드 (Jenkins에서는 꼭 필요)
+    # 환경변수 로드
     source /home/ec2-user/.env
 
-    # DEBUG 로그
-    log_message "[+] check_cvss_and_notify 호출: $REPO_NAME $PROJECT_VERSION"
-    log_message "[DEBUG] 실행 명령: python3 /home/ec2-user/check_cvss_and_notify_2.py \"$REPO_NAME\" \"$PROJECT_VERSION\" \"$DT_API_KEY\" \"$DT_URL\""
+    # 로그 파일 경로
+    local LOG_FILE="/home/ec2-user/check_cvss_and_notify.log"
+    
+    log_message() {
+        local MESSAGE="$1"
+        echo "$(date +'%Y-%m-%d %H:%M:%S') - $MESSAGE" >> "$LOG_FILE"
+    }
 
-    # Python 실행
-    python3 /home/ec2-user/check_cvss_and_notify_2.py "$REPO_NAME" "$PROJECT_VERSION" "$DT_API_KEY" "$DT_URL"
-    local exit_code=$?
+    log_message "[+] CVSS 점검 시작: $REPO_NAME $PROJECT_VERSION"
 
-    if [[ $exit_code -ne 0 ]]; then
-        log_message "[❌] check_cvss_and_notify 실행 실패 (exit code: $exit_code)"
-        return $exit_code
-    else
-        log_message "[✅] check_cvss_and_notify 실행 성공"
-        return 0
+    local HEADERS=("-H" "X-Api-Key: $DT_API_KEY" "-H" "Content-Type: application/json")
+    local PROJECTS_JSON=$(curl -s -X GET "$DT_URL/api/v1/project" -H "X-Api-Key: $DT_API_KEY")
+
+    # UUID 조회
+    local PROJECT_UUID=$(echo "$PROJECTS_JSON" | jq -r ".[] | select(.name==\"$REPO_NAME\" and .version==\"$PROJECT_VERSION\") | .uuid")
+
+    if [[ -z "$PROJECT_UUID" || "$PROJECT_UUID" == "null" ]]; then
+        log_message "❌ 프로젝트 UUID 조회 실패"
+        return 1
     fi
+
+    log_message "[✅] 프로젝트 UUID: $PROJECT_UUID"
+
+    # 메트릭 조회
+    local METRICS_URL="$DT_URL/api/v1/metrics/project/$PROJECT_UUID/current"
+    local METRICS_JSON=$(curl -s -X GET "$METRICS_URL" -H "X-Api-Key: $DT_API_KEY")
+
+    local CRITICAL=$(echo "$METRICS_JSON" | jq '.critical // 0')
+    local HIGH=$(echo "$METRICS_JSON" | jq '.high // 0')
+    local MEDIUM=$(echo "$METRICS_JSON" | jq '.medium // 0')
+    local LOW=$(echo "$METRICS_JSON" | jq '.low // 0')
+
+    # 상세 취약점 조회
+    local VULN_URL="$DT_URL/api/v1/vulnerability/project/$PROJECT_UUID"
+    local VULN_LIST=$(curl -s -X GET "$VULN_URL" -H "X-Api-Key: $DT_API_KEY")
+
+    local CVSS9_COUNT=$(echo "$VULN_LIST" | jq '[.[] | select((.cvssV3.baseScore // 0) >= 9 or (.cvssV2.baseScore // 0) >= 9 or (.severity == "CRITICAL"))] | length')
+
+    local SUMMARY="*정책 결과:*"
+    if [[ "$CVSS9_COUNT" -ge 1 ]]; then
+        SUMMARY+=" ❌ *정책 위반* - CVSS 9 이상 취약점 $CVSS9_COUNT 건 발견됨."
+        local EXIT_CODE=2
+    else
+        SUMMARY+=" ✅ *통과* - CVSS 9 이상 취약점 없음."
+        local EXIT_CODE=0
+    fi
+
+    SUMMARY+="\n\n*취약점 요약:*\n• CVSS 9 이상: $CVSS9_COUNT\n• Critical: $CRITICAL\n• High: $HIGH\n• Medium: $MEDIUM\n• Low: $LOW"
+
+    log_message "$SUMMARY"
+
+    # Slack 전송
+    if [[ -n "$SLACK_WEBHOOK_URL" ]]; then
+        local PAYLOAD=$(jq -n --arg text "$SUMMARY" '{text: $text}')
+        curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
+        log_message "[✅] Slack 알림 전송 완료"
+    else
+        log_message "[⚠️] SLACK_WEBHOOK_URL 환경변수가 비어 있음"
+    fi
+
+    return $EXIT_CODE
 }
-
-
 
 
 
