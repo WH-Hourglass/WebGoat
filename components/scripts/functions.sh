@@ -96,116 +96,75 @@ upload_sbom() {
     local REPO_DIR="$3"
     local COMMIT_ID="$4"
 
-    if [[ -z "$REPO_NAME" || -z "$VERSION" || -z "$REPO_DIR" || -z "$COMMIT_ID" ]]; then
-        log_message "❌ upload_sbom 함수 호출 시 REPO_NAME, VERSION, REPO_DIR, COMMIT_ID가 필요합니다."
-        return 1
-    fi
-
-    source /home/ec2-user/.env
-
     local SBOM_FILE="${REPO_DIR}/sbom_${REPO_NAME}_${VERSION}.json"
-    if [[ ! -f "$SBOM_FILE" ]]; then
-        log_message "❌ SBOM 파일이 존재하지 않습니다: $SBOM_FILE"
-        return 1
-    fi
+    local PROJECT_VERSION="${VERSION}_$(date +%Y%m%d_%H%M%S)"
 
-    local PROJECT_VERSION="$VERSION"
     log_message "🚀 SBOM 업로드 시작: $SBOM_FILE (projectVersion: $PROJECT_VERSION)"
 
-    # SBOM 업로드
-    log_message "[🔍] SBOM 업로드 실행 중..."
-    local upload_response=$(curl -s -X POST http://localhost:8080/api/v1/bom \
+    curl -s -X POST "$DT_URL/api/v1/bom" \
         -H "X-Api-Key: $DT_API_KEY" \
         -F "projectName=$REPO_NAME" \
         -F "projectVersion=$PROJECT_VERSION" \
         -F "bom=@$SBOM_FILE" \
-        -F "autoCreate=true" 2>&1)
-        
-    local curl_exit_code=$?
-    log_message "[ℹ️] CURL 종료 코드: $curl_exit_code"
-    
-    if [[ $curl_exit_code -ne 0 ]]; then
-        log_message "❌ SBOM 업로드 실패"
+        -F "autoCreate=true" >/dev/null
+
+    log_message "[⏳] 프로젝트 UUID 조회 대기..."
+    sleep 5
+
+    local PROJECT_UUID=$(curl -s -X GET "$DT_URL/api/v1/project?name=${REPO_NAME}&version=${PROJECT_VERSION}" \
+        -H "X-Api-Key: $DT_API_KEY" | jq -r '.[0].uuid')
+
+    if [[ -z "$PROJECT_UUID" || "$PROJECT_UUID" == "null" ]]; then
+        log_message "❌ 프로젝트 UUID를 찾을 수 없습니다."
         return 1
     fi
 
-    log_message "[DEBUG] 업로드 완료, 다음 단계 시작"
-    
-    # 업로드 후 분석 완료까지 대기 (더 긴 대기 시간)
-    log_message "[⏳] Dependency-Track 분석 완료까지 대기 중..."
-    sleep 30
+    log_message "✅ UUID 조회 성공: $PROJECT_UUID"
+
+    sleep 20  # 분석 대기
+
+    check_cvss "$PROJECT_UUID" "$REPO_NAME" "$PROJECT_VERSION"
 }
 
 check_cvss() {
-    local REPO_NAME="$1"
-    local PROJECT_VERSION="$2"
+    local PROJECT_UUID="$1"
+    local REPO_NAME="$2"
+    local PROJECT_VERSION="$3"
 
-    # 환경변수 로드
-    source /home/ec2-user/.env
+    local METRICS=$(curl -s -X GET "$DT_URL/api/v1/metrics/project/${PROJECT_UUID}/current" -H "X-Api-Key: $DT_API_KEY")
+    local VULNS=$(curl -s -X GET "$DT_URL/api/v1/vulnerability/project/${PROJECT_UUID}" -H "X-Api-Key: $DT_API_KEY")
 
-    # 로그 파일 경로
-    local LOG_FILE="/home/ec2-user/check_cvss_and_notify.log"
-    
-    log_message() {
-        local MESSAGE="$1"
-        echo "$(date +'%Y-%m-%d %H:%M:%S') - $MESSAGE" >> "$LOG_FILE"
-    }
+    local CVSS9_VULNS=$(echo "$VULNS" | jq '[.[] | select(
+        (.cvssV3.baseScore // .cvssV2.baseScore // 0) >= 9
+    )]')
 
-    log_message "[+] CVSS 점검 시작: $REPO_NAME $PROJECT_VERSION"
-
-    local HEADERS=("-H" "X-Api-Key: $DT_API_KEY" "-H" "Content-Type: application/json")
-    local PROJECTS_JSON=$(curl -s -X GET "$DT_URL/api/v1/project" -H "X-Api-Key: $DT_API_KEY")
-
-    # UUID 조회
-    local PROJECT_UUID=$(echo "$PROJECTS_JSON" | jq -r ".[] | select(.name==\"$REPO_NAME\" and .version==\"$PROJECT_VERSION\") | .uuid")
-
-    if [[ -z "$PROJECT_UUID" || "$PROJECT_UUID" == "null" ]]; then
-        log_message "❌ 프로젝트 UUID 조회 실패"
-        return 1
-    fi
-
-    log_message "[✅] 프로젝트 UUID: $PROJECT_UUID"
-
-    # 메트릭 조회
-    local METRICS_URL="$DT_URL/api/v1/metrics/project/$PROJECT_UUID/current"
-    local METRICS_JSON=$(curl -s -X GET "$METRICS_URL" -H "X-Api-Key: $DT_API_KEY")
-
-    local CRITICAL=$(echo "$METRICS_JSON" | jq '.critical // 0')
-    local HIGH=$(echo "$METRICS_JSON" | jq '.high // 0')
-    local MEDIUM=$(echo "$METRICS_JSON" | jq '.medium // 0')
-    local LOW=$(echo "$METRICS_JSON" | jq '.low // 0')
-
-    # 상세 취약점 조회
-    local VULN_URL="$DT_URL/api/v1/vulnerability/project/$PROJECT_UUID"
-    local VULN_LIST=$(curl -s -X GET "$VULN_URL" -H "X-Api-Key: $DT_API_KEY")
-
-    local CVSS9_COUNT=$(echo "$VULN_LIST" | jq '[.[] | select((.cvssV3.baseScore // 0) >= 9 or (.cvssV2.baseScore // 0) >= 9 or (.severity == "CRITICAL"))] | length')
-
+    local COUNT=$(echo "$CVSS9_VULNS" | jq 'length')
     local SUMMARY="*정책 결과:*"
-    if [[ "$CVSS9_COUNT" -ge 1 ]]; then
-        SUMMARY+=" ❌ *정책 위반* - CVSS 9 이상 취약점 $CVSS9_COUNT 건 발견됨."
-        local EXIT_CODE=2
+    local EXIT_CODE=0
+
+    if [[ "$COUNT" -gt 0 ]]; then
+        SUMMARY+=" ❌ *정책 위반* - CVSS 9 이상 $COUNT건"
+        EXIT_CODE=2
     else
-        SUMMARY+=" ✅ *통과* - CVSS 9 이상 취약점 없음."
-        local EXIT_CODE=0
+        SUMMARY+=" ✅ *통과* - CVSS 9 이상 없음"
     fi
 
-    SUMMARY+="\n\n*취약점 요약:*\n• CVSS 9 이상: $CVSS9_COUNT\n• Critical: $CRITICAL\n• High: $HIGH\n• Medium: $MEDIUM\n• Low: $LOW"
+    local CRITICAL=$(echo "$METRICS" | jq '.critical // 0')
+    local HIGH=$(echo "$METRICS" | jq '.high // 0')
+    local MEDIUM=$(echo "$METRICS" | jq '.medium // 0')
+    local LOW=$(echo "$METRICS" | jq '.low // 0')
 
-    log_message "$SUMMARY"
+    local MESSAGE="*${REPO_NAME} (${PROJECT_VERSION})*\n${SUMMARY}\n\n• Critical: $CRITICAL\n• High: $HIGH\n• Medium: $MEDIUM\n• Low: $LOW\n• CVSS ≥ 9: $COUNT"
 
-    # Slack 전송
     if [[ -n "$SLACK_WEBHOOK_URL" ]]; then
-        local PAYLOAD=$(jq -n --arg text "$SUMMARY" '{text: $text}')
-        curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
-        log_message "[✅] Slack 알림 전송 완료"
-    else
-        log_message "[⚠️] SLACK_WEBHOOK_URL 환경변수가 비어 있음"
+        curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"$MESSAGE\"}"
+        log_message "✅ Slack 전송 완료"
     fi
 
     return $EXIT_CODE
 }
-
 
 
 
