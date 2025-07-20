@@ -53,7 +53,7 @@ pipeline {
         //    }
         //}
          stage('🚀 Generate SBOM via CDXGEN Docker') {
-            agent { label 'sca' }
+            agent { label 'SCA' }
             steps {
                 script {
                     def repoUrl = scm.userRemoteConfigs[0].url
