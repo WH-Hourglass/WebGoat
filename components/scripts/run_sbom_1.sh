@@ -147,7 +147,7 @@ if [[ -z "$PROJECT_UUID" || "$PROJECT_UUID" == "null" ]]; then
 fi
 
 # 분석 완료까지 대기 (최대 60초), 메시지 없이
-MAX_WAIT=60
+MAX_WAIT=90
 WAITED=0
 while [[ $WAITED -lt $MAX_WAIT ]]; do
     METRICS_JSON=$(curl -s -X GET "http://localhost:8080/api/v1/project/${PROJECT_UUID}" -H "X-Api-Key: $DT_API_KEY")
