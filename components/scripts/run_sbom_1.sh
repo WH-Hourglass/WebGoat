@@ -146,6 +146,8 @@ if [[ -z "$PROJECT_UUID" || "$PROJECT_UUID" == "null" ]]; then
     exit 1
 fi
 
+echo "[DEBUG] PROJECT_UUID: $PROJECT_UUID"
+
 # 분석 완료까지 대기 (최대 60초), 메시지 없이
 MAX_WAIT=90
 WAITED=0
