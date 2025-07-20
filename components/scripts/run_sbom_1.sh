@@ -47,14 +47,14 @@ fi
 
 # 자바 기반 프로젝트인 경우
 if [[ -n "$BUILD_FILE" ]]; then
-  JAVA_VERSION=$(python3 pom_to_docker_image.py "$BUILD_FILE" 2>/dev/null | tr -d '\r')
+  JAVA_VERSION=$(python3 components/scripts/pom_to_docker_image.py "$BUILD_FILE" 2>/dev/null | tr -d '\r')
 
   if [[ -z "$JAVA_VERSION" ]]; then
     echo "[⚠️] Bedrock 기반 감지 실패 – 기본 java 사용"
     IMAGE_TAG="java"
   else
     echo "[✅] 감지된 Java 버전: $JAVA_VERSION"
-    IMAGE_TAG=$(python3 docker_tag.py "$JAVA_VERSION" 2>/dev/null | tr -d '\r')
+    IMAGE_TAG=$(python3 components/scripts/docker_tag.py "$JAVA_VERSION" 2>/dev/null | tr -d '\r')
     [[ -z "$IMAGE_TAG" ]] && IMAGE_TAG="java"
   fi
 
@@ -161,4 +161,4 @@ done
 
 # CVSS 9 이상 정책 검사
 echo "📤 CVSS 9 이상 정책 검사 중..."
-python3 check_cvss_and_notify_2.py "$PROJECT_UUID" "$DT_API_KEY" "http://localhost:8080" "$REPO_NAME" "$PROJECT_VERSION"
+python3 components/scripts/check_cvss_and_notify_2.py "$PROJECT_UUID" "$DT_API_KEY" "http://localhost:8080" "$REPO_NAME" "$PROJECT_VERSION"
