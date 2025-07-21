@@ -2,7 +2,6 @@
 set -eo pipefail 
 
 set -o allexport
-source components/dot.env
 set +o allexport
 
 if [ -z "$DYNAMIC_IMAGE_TAG" ]; then
