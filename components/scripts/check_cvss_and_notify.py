@@ -50,26 +50,15 @@ def generate_slack_payload(summary_text, detailed_list, repo_name, project_versi
 
 
 def main():
-    if len(sys.argv) != 6:
-        print("❌ 사용법: python check_cvss_and_notify.py <PROJECT_UUID> <API_KEY> <DT_URL> <REPO_NAME> <PROJECT_VERSION>")
+    if len(sys.argv) != 7:
+        print("❌ 사용법: python check_cvss_and_notify.py <PROJECT_UUID> <API_KEY> <DT_URL> <REPO_NAME> <PROJECT_VERSION> <IMAGE_TAG>")
         sys.exit(1)
     project_version ="Unknown"
-    project_uuid, api_key, dt_url, repo_name, project_version = sys.argv[1:]
+    project_uuid, api_key, dt_url, repo_name, project_version, image_tag = sys.argv[1:]
     base_url = dt_url.rstrip("/")
     headers = {"X-Api-Key": api_key}
 
-    # 1. 프로젝트 이름, 버전 조회
     project_name = repo_name
-    #project_version = "Unknown"
-    #project_info_url = f"{base_url}/api/v1/project/{project_uuid}"
-    #project_info_res = requests.get(project_info_url, headers=headers)
-    #try:
-    #    if project_info_res.status_code == 200:
-    #        project_info = project_info_res.json()
-    #        project_name = project_info.get("name", repo_name)
-    #        project_version = project_info.get("version", "Unknown")
-    #except Exception:
-    #    pass
 
     # 2. 메트릭 조회
     metrics_url = f"{base_url}/api/v1/metrics/project/{project_uuid}/current"
@@ -135,6 +124,8 @@ def main():
     # 5. 요약 출력
     summary = f"""
 *정책 결과:* {result_msg}
+
+Image Tag: {image_tag}
 
 *취약점 요약:*
 • CVSS 9 이상: {len(critical_vulns)}
