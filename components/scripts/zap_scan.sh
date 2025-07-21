@@ -1,7 +1,5 @@
 #!/bin/bash
-
 START_TIME=$(date +%s)
-
 # ⛳ 인자로 컨테이너명과 시작 경로를 받음
 webapp_CONTAINER="${1:-containername}" # webgoat, vulnapp
 ZAP_PORT="${2:-8090}"
@@ -12,29 +10,25 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 REPORT_JSON="$HOME/zap_${webapp_CONTAINER}.json"
 HOST="http://127.0.0.1:${WEBAPP_HOST_PORT}"
 TARGET_URL="${HOST}${START_PATH}"
-LOGIN_URL="${5:-/WebGoat/login"}
+LOGIN_URL="${5:-/WebGoat/login}"
 echo "[*] ZAP 스캔 대상: $TARGET_URL"
 
 # 로그인 관련 설정
 USERNAME="${6:-test12}"
 PASSWORD="${7:-test12}"
-COOKIE_TXT="${CONTAINER_NAME}_cookie.txt"
+COOKIE_TXT="${webapp_CONTAINER}_cookie.txt"
 
 # 리포트 설정
-
 echo "============================================="
 echo "ZAP 보안 스캔 시작 (로그인 기능 포함)"
-echo "컨테이너: $CONTAINER_NAME"
+echo "컨테이너: $webapp_CONTAINER"
 echo "사용자명: $USERNAME"
 echo "시작 경로: $START_PATH"
 echo "============================================="
 
-
-
 # ② 애플리케이션 준비 대기 (WebGoat 전용 로그인 페이지 체크)
 echo "[2] 초기 대기 15초..."
 sleep 15
-
 echo "[2-1] 로그인 페이지 준비 확인 시작..."
 for i in $(seq 1 10); do
     HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' "${HOST}${LOGIN_URL}")
@@ -57,7 +51,7 @@ echo "[3] 회원가입 요청..."
 curl -s -i -c "$COOKIE_TXT" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "username=$USERNAME&password=$PASSWORD&matchingPassword=$PASSWORD&agree=agree" \
-    "${HOST}${LOGIN_URL}${" > /dev/null
+    "${HOST}${LOGIN_URL}" > /dev/null
 
 echo "[3-1] 로그인 시도..."
 curl -s -i -c "$COOKIE_TXT" \
@@ -73,7 +67,6 @@ else
     echo "[-] 로그인 실패"
     exit 1
 fi
-
 
 # ⑥ 인증 쿠키 설정 & 초기 페이지 접근
 echo "[5] ZAP에 인증 쿠키 설정..."
@@ -130,6 +123,5 @@ END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
 printf "[+] 전체 수행 시간: %d분 %d초\n" $((ELAPSED/60)) $((ELAPSED%60))
 
-
 # 임시 파일 정리
-rm -f "${CONTAINER_NAME}_cookie.txt"
+rm -f "${webapp_CONTAINER}_cookie.txt"
