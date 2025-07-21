@@ -1,5 +1,4 @@
 #!/bin/bash
-source components/dot.env
 
 if [ -z "$DYNAMIC_IMAGE_TAG" ]; then
   echo "Error: IMAGE_TAG not provided as an argument."
