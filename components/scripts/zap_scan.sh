@@ -42,17 +42,7 @@ while true; do
   [ "$REMAIN" -eq 0 ] && break
   sleep 2
 done
-# HTML 리포트 저장
-echo "[3] HTML 리포트 저장..."
-HTML_REPORT="$HOME/zap_report_${TIMESTAMP}.html"
-curl -s "http://$ZAP_HOST:$ZAP_PORT/OTHER/core/other/htmlreport/" -o "$HTML_REPORT"
 
-if [ -s "$HTML_REPORT" ]; then
-  echo "[+] HTML 리포트: $HTML_REPORT"
-else
-  echo "[-] HTML 리포트 생성 실패"
-  exit 1
-fi
 # JSON 리포트 저장
 echo "[4] JSON 리포트 저장..."
 curl -s "http://$ZAP_HOST:$ZAP_PORT/OTHER/core/other/jsonreport/" -o "$REPORT_JSON"
