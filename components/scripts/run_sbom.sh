@@ -6,10 +6,6 @@ REPO_URL="$1"
 REPO_NAME="$2"
 BUILD_ID="$3"
 
-echo "[DEBUG] REPO_URL: ${REPO_URL}"
-echo "[DEBUG] REPO_NAME: ${REPO_NAME}"
-echo "[DEBUG] BUILD_ID: ${BUILD_ID}"
-
 if [[ -z "$REPO_URL" || -z "$REPO_NAME" ]]; then
     echo "❌ REPO_URL과 REPO_NAME을 인자로 전달해야 합니다."
     exit 1
@@ -146,8 +142,6 @@ if [[ -z "$PROJECT_UUID" || "$PROJECT_UUID" == "null" ]]; then
     exit 1
 fi
 
-echo "[DEBUG] PROJECT_UUID: $PROJECT_UUID"
-
 # 분석 완료까지 대기 (최대 60초), 메시지 없이
 MAX_WAIT=90
 WAITED=0
@@ -166,6 +160,5 @@ done
 # CVSS 9 이상 정책 검사
 echo "📤 CVSS 9 이상 정책 검사 중..."
 python3 "$WORKSPACE/components/scripts/check_cvss_and_notify.py" "$PROJECT_UUID" "$DT_API_KEY" "http://localhost:8080" "$REPO_NAME" "$PROJECT_VERSION" "$DYNAMIC_IMAGE_TAG" 2>&1
-#pwd && cd /home/ec2-user && python3 check_cvss_and_notify.py "$PROJECT_UUID" "$DT_API_KEY" "http://localhost:8080" "$REPO_NAME" "$PROJECT_VERSION" "$DYNAMIC_IMAGE_TAG" 2>&1
 
 
