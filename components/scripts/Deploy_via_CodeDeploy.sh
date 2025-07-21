@@ -1,12 +1,15 @@
 #!/bin/bash
 source components/dot.env
-
 # 기본값
 CONTAINER_NAME="${BUILD_TAG}"
 IMAGE_TAG="${DYNAMIC_IMAGE_TAG}"
 ZAP_SCRIPT="${ZAP_SCRIPT:-zap_scan.sh}"
-ZAP_BIN="${ZAP_BIN:-$HOME/zap/zap.sh}"
+ZAP_BIN="${ZAP_BIN:-$HOME/zap/zap.sh}" # zap.sh 실행 경로
 startpage="${1:-}"
+
+# 체크아웃된 저장소에서 ZAP 스크립트 경로 설정
+ZAP_SCRIPT_PATH="${WORKSPACE}/components/scripts/zap_scan.sh"
+
 echo "🔧 ECR_REPO: $ECR_REPO"
 echo "DEBUG: 변수 설정 완료"
 
@@ -31,7 +34,7 @@ detect_internal_port() {
         echo "[+] EXPOSE된 포트 발견: $exposed_ports" >&2
         
         # 웹 포트 우선순위 적용 (80을 가장 높은 우선순위로)
-        for preferred_port in 80 8080 3000 8000 9000 9090 5000 4000; do
+        for preferred_port in 80 8080 3000 8000 9000 5000 4000; do
             if echo "$exposed_ports" | grep -q "^$preferred_port$"; then
                 detected_port="$preferred_port"
                 echo "[+] 감지된 내부 포트: $detected_port" >&2
@@ -55,18 +58,14 @@ detect_internal_port() {
     return 1
 }
 
-# 사용 가능한 외부 포트 찾기
 for try_port in {8081..8089}; do
   echo "[DEBUG] 시도 중: $try_port"
-
   set +e
   lsof_stdout=$(lsof -iTCP:$try_port -sTCP:LISTEN -n -P 2>/dev/null)
   lsof_exit_code=$?
   set -e
-
   echo "[DEBUG] lsof 종료 코드: $lsof_exit_code"
   echo "[DEBUG] lsof 출력: $lsof_stdout"
-
   # "포트 사용 안 함" 상황 → 정상 처리
   if [ $lsof_exit_code -ne 0 ] && [ -z "$lsof_stdout" ]; then
     echo "[DEBUG] 포트 $try_port 는 사용 중 아님 (lsof 정상)"
@@ -74,12 +73,10 @@ for try_port in {8081..8089}; do
     echo "🚨 Error: lsof 명령 실패 (예외 상황)"
     exit 1
   fi
-
   # 이 포트가 사용 중이면 다음 포트로
   if [ -n "$lsof_stdout" ]; then
     continue
   fi
-
   # docker 검사
   in_use_docker=""
   docker_output=$(docker ps --format '{{.Ports}}' 2>/dev/null || true)
@@ -87,11 +84,9 @@ for try_port in {8081..8089}; do
     in_use_docker=1
   fi
   echo "[DEBUG] docker 결과: $in_use_docker"
-
   if [ -z "$in_use_docker" ]; then
     port=$try_port
     echo "[DEBUG] 사용 가능한 포트 발견: $port"
-
     if [[ "$port" =~ ^[0-9]+$ ]]; then
       zap_port=$((port + 10))
       echo "[DEBUG] ZAP 포트: $zap_port"
@@ -110,7 +105,19 @@ zap_log="zap_${zap_port}.log"
 zapJson="zap_test_${BUILD_TAG}.json"
 timestamp=$(date +"%Y%m%d_%H%M%S")
 
-# ZAP 작업 디렉터리 및 플러그인 디렉터리 생성 및 애드온 복사
+# 체크아웃된 저장소의 ZAP 스크립트 확인 및 실행 권한 부여
+echo "[*] ZAP 스크립트 경로 확인: $ZAP_SCRIPT_PATH"
+if [ -f "$ZAP_SCRIPT_PATH" ]; then
+    echo "[+] ZAP 스크립트 파일 확인 완료"
+    chmod +x "$ZAP_SCRIPT_PATH"
+else
+    echo "❌ ZAP 스크립트 파일을 찾을 수 없습니다: $ZAP_SCRIPT_PATH"
+    echo "현재 디렉터리 구조:"
+    find "${WORKSPACE}" -name "*.sh" -type f | head -10
+    exit 1
+fi
+
+# ZAP 작업 디렉터리 및 플러그인 디렉터리 생성 및 애드온 복사 (zap 데몬 병렬 실행할 때 에드온으로 인한 에러 방지용)
 mkdir -p "$HOME/zap/zap_workdir_${zap_port}/plugin"
 ZAP_BIN_DIR=$(dirname "$ZAP_BIN")
 cp "${ZAP_BIN_DIR}/plugin/"*.zap "$HOME/zap/zap_workdir_${zap_port}/plugin/"
@@ -162,17 +169,17 @@ if [ "$health_check_success" = false ]; then
 fi
 
 echo "[*] ZAP 데몬 실행 중..."
+# 데몬을 -dir 명령어로 실행해서 병렬 실행 가능하도록 하는 것임 zap_workdir_${zap_port}는 zap 데몬용 디렉터리
 nohup "$ZAP_BIN" -daemon -port "$zap_port" -host 127.0.0.1 -config api.disablekey=true -dir "zap_workdir_${zap_port}" >"$zap_log" 2>&1 &
 echo $! >"$zap_pidfile"
 
-for i in {1..60}; do
+for i in {1..60}; do # 데몬 실행 체크도 그냥 여기서 하도록 코드 옮김
   curl -s "http://127.0.0.1:$zap_port" > /dev/null && { echo "[+] ZAP 준비 완료"; break; }
   sleep 1
 done 
 
-echo "[*] ZAP 스크립트 실행 ($ZAP_SCRIPT)"
-chmod +x ~/"$ZAP_SCRIPT"
-~/"$ZAP_SCRIPT" "$containerName" "$zap_port" "$startpage" "$port"
+echo "[*] 체크아웃된 저장소의 ZAP 스크립트 실행"
+"$ZAP_SCRIPT_PATH" "$containerName" "$zap_port" "$startpage" "$port" # $port인자 추가
 
 # ZAP 스크립트가 실제로 생성하는 파일명
 ZAP_RESULT_FILE="$HOME/zap_${containerName}.json"
@@ -214,8 +221,7 @@ fi
 
 echo "[*] 리포트 파일을 $REPORT_DIR 로 이동"
 if [ -f "$ZAP_RESULT_FILE" ]; then
-    # 타임스탬프를 포함한 파일명으로 저장 (중복 방지)
-    final_filename="zap_${containerName}_${timestamp}.json"
+    final_filename="zap_${containerName}.json"
     mv "$ZAP_RESULT_FILE" "$REPORT_DIR/$final_filename"
     if [ $? -eq 0 ]; then
         echo "✅ 파일 이동 완료: $REPORT_DIR/$final_filename"
