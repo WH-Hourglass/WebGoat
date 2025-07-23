@@ -15,13 +15,7 @@ pipeline {
         SONARQUBE_ENV = "WH_sonarqube"
         S3_BUCKET_DAST = "testdast"
     }
-    // 테스트용 주석
-    // 테스트용 주석2
-    // 테스트용 주석3
-    // 테스트용 주석4
-    // 테스트용 주석5
-    // 테스트용 주석6
-
+   
     stages {
         stage('📦 Checkout') {
             steps {
