@@ -15,6 +15,8 @@ pipeline {
         SONARQUBE_ENV = "WH_sonarqube"
         S3_BUCKET_DAST = "testdast"
     }
+
+    // 업데이트1
    
     stages {
         stage('📦 Checkout') {
