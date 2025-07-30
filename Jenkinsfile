@@ -90,7 +90,7 @@ pipeline {
                       aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ECR_REPO"
                     '''
 
-                sh'nohup env DYNAMIC_IMAGE_TAG=${DYNAMIC_IMAGE_TAG} components/scripts/DAST_Zap_Scan.sh /WebGoat > zap_bg_${BUILD_NUMBER}.log 2>&1 
+                sh'nohup env DYNAMIC_IMAGE_TAG=${DYNAMIC_IMAGE_TAG} components/scripts/DAST_Zap_Scan.sh /WebGoat > zap_bg_${BUILD_NUMBER}.log 2>&1 '
 
             }
         }
